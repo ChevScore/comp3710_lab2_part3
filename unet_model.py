@@ -4,6 +4,10 @@ import torch
 import torchvision.transforms as transforms
 
 class UNet(nn.Module):
+    """
+    UNet model architecture as defined in:
+    Reference: https://camo.githubusercontent.com/f3686ec6ba3a790633d1806ec5eb7ffcb4be041eeec8c508eb0200d140450810/68747470733a2f2f64726976652e676f6f676c652e636f6d2f75633f6578706f72743d766965772669643d316677615f4977733668306e6b647075527249484b3345616c38456e6d4a5f6238
+    """
     def __init__(self) -> None:
         super(UNet, self).__init__()
         
@@ -22,6 +26,9 @@ class UNet(nn.Module):
         self.out_conv = UNetOutConv(32, 1)
         
     def forward(self, x):
+        """
+        Forward pass of the UNet model as per above architecture reference
+        """
         x1 = self.in_conv(x)
         x2 = self.down1(x1)
         x3 = self.down2(x2)

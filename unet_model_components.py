@@ -3,6 +3,9 @@ import torch.nn as nn
 from torchvision import models
 
 class UNetInConv(nn.Module):
+    """
+    Convolutional block containing the forward layered movement of the UNet model
+    """
     def __init__(self, in_channels, out_channels):
         super().__init__()
         self.in_conv = nn.Sequential(
@@ -16,6 +19,9 @@ class UNetInConv(nn.Module):
         return self.in_conv(x)
     
 class UNetDown(nn.Module):
+    """
+    Convolutional block containing the downward step into the UNet model
+    """
     def __init__(self, in_channels, out_channels):
         super().__init__()
         self.down_conv = nn.Sequential(
@@ -27,6 +33,9 @@ class UNetDown(nn.Module):
         return self.down_conv(x)
     
 class UNetUp(nn.Module):
+    """
+    Convolutional block containing the upward step up the UNet model
+    """
     def __init__(self, in_channels, out_channels):
         super().__init__()
         self.up_conv = nn.Sequential(
@@ -38,6 +47,9 @@ class UNetUp(nn.Module):
         return self.up_conv(x)
     
 class UNetOutConv(nn.Module):
+    """
+    Convolutional block containing the final output of the UNet model
+    """
     def __init__(self, in_channels, out_channels):
         super().__init__()
         self.out_conv = nn.Sequential(
