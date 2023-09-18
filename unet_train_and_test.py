@@ -19,7 +19,6 @@ if not torch.cuda.is_available():
 
 # Parameters
 num_epochs = 10
-depth = 5
 lr = 2e-4
 
 # Paths to the directories containing the training, validation, and test data
@@ -32,6 +31,9 @@ train_masks_directory = images_directory + '/keras_png_slices_seg_train'
 
 test_directory = images_directory + '/keras_png_slices_test'
 test_masks_directory = images_directory + '/keras_png_slices_seg_test'
+
+validation_directory = images_directory + '/keras_png_slices_validate'
+validation_masks_directory = images_directory + '/keras_png_slices_seg_validate'
 
 model_name='unet'
 output_directory = './output_torch_' + model_name
@@ -100,20 +102,30 @@ train_loader = DataLoader(train_set, batch_size=len(train_set), shuffle=True)
 test_set = BrainSlicesDataset(test_directory, test_masks_directory, transform=transform)
 test_loader = DataLoader(test_set, batch_size=len(test_set), shuffle=True)
 
+validate_set = BrainSlicesDataset(validation_directory, validation_masks_directory, transform=transform)
+validate_loader = DataLoader(validate_set, batch_size=len(validate_set), shuffle=True)
 
-# 2. Setup training
-def train_model(model, criteria, optimizer, num_epochs):
+def train_model(model, criteria, optimizer, num_epochs, validation_interval=1):
     """
     Train the model
     @param model: the model to train
     @param criteria: the loss function
     @param optimizer: the optimizer
+    @param train_loader: the training data loader
+    @param val_loader: the validation data loader
     @param num_epochs: the number of epochs to train for
+    @param validation_interval: interval (in epochs) at which to perform validation
     """
     device = next(model.parameters()).device
     model.train()
     start = time.time()
+    
+    train_losses = []  # Store training losses
+    val_losses = []    # Store validation losses
+    
     for epoch in range(num_epochs):
+        # Training phase
+        train_loss_sum = 0.0
         for image, mask in train_loader:
             image = image.to(device)
             mask = mask.to(device)
@@ -127,12 +139,42 @@ def train_model(model, criteria, optimizer, num_epochs):
             loss.backward()
             optimizer.step()
             
-            print('Epoch [{}/{}], Loss: {:.4f}'.format(epoch+1, num_epochs, loss.item()))
-    
+            train_loss_sum += loss.item()
+        
+        # Calculate average training loss for the epoch
+        avg_train_loss = train_loss_sum / len(train_loader)
+        train_losses.append(avg_train_loss)
+        
+        # Print training loss
+        print('Epoch [{}/{}], Training Loss: {:.4f}'.format(epoch + 1, num_epochs, avg_train_loss))
+        
+        # Validation phase
+        if (epoch + 1) % validation_interval == 0:
+            model.eval()  # Set model to evaluation mode
+            val_loss_sum = 0.0
+            with torch.no_grad():
+                for val_image, val_mask in validate_loader:
+                    val_image = val_image.to(device)
+                    val_mask = val_mask.to(device)
+                    
+                    val_output = model(val_image)
+                    val_loss = criteria(val_output, val_mask)
+                    
+                    val_loss_sum += val_loss.item()
+            
+            # Calculate average validation loss for the epoch
+            avg_val_loss = val_loss_sum / len(validate_loader)
+            val_losses.append(avg_val_loss)
+            
+            # Print validation loss
+            print('Epoch [{}/{}], Validation Loss: {:.4f}'.format(epoch + 1, num_epochs, avg_val_loss))
+            
+            model.train()  # Set model back to training mode
     
     end = time.time()
-    elapsed = end - start
-    print('Training completed in {:.0f}m {:.0f}s'.format(elapsed // 60, elapsed % 60))
+    print(f"Training completed in {end - start} seconds.")
+    
+    return train_losses, val_losses
     
 def test_model(model):
     """
