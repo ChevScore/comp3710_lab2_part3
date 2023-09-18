@@ -39,7 +39,7 @@ class UNetUp(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
         self.up_conv = nn.Sequential(
-            nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2),
+            nn.ConvTranspose2d(in_channels, in_channels, kernel_size=2, stride=2),
             UNetInConv(in_channels, out_channels)
         )
         
@@ -53,6 +53,7 @@ class UNetOutConv(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
         self.out_conv = nn.Sequential(
+            nn.ConvTranspose2d(in_channels, in_channels, kernel_size=2, stride=2),
             UNetInConv(in_channels, out_channels),
             nn.Conv2d(out_channels, out_channels, kernel_size=1)
         )

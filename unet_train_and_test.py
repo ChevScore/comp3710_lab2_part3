@@ -9,6 +9,7 @@ import tqdm
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from unet_model import *
+import numpy as np
 
 # MACRO for printing
 PRINT=True
@@ -20,21 +21,23 @@ if not torch.cuda.is_available():
 
 # Parameters
 num_epochs = 10
+num_classes = 4
+batchsize = 8
 lr = 2e-4
 
 # Paths to the directories containing the training, validation, and test data
 # with images of the brain slices via the Preprocessed OASIS dataset
-base_directory = '/home/chevscore/comp3710/lab2/comp3710_lab2_part3'
-images_directory = base_directory + '/keras_png_slices_data'
+base_directory = '.'
+images_directory = base_directory + '\keras_png_slices_data'
 
-train_directory = images_directory + '/keras_png_slices_train'
-train_masks_directory = images_directory + '/keras_png_slices_seg_train'
+train_directory = images_directory + '\keras_png_slices_train'
+train_masks_directory = images_directory + '\keras_png_slices_seg_train'
 
-test_directory = images_directory + '/keras_png_slices_test'
-test_masks_directory = images_directory + '/keras_png_slices_seg_test'
+test_directory = images_directory + '\keras_png_slices_test'
+test_masks_directory = images_directory + '\keras_png_slices_seg_test'
 
-validation_directory = images_directory + '/keras_png_slices_validate'
-validation_masks_directory = images_directory + '/keras_png_slices_seg_validate'
+validation_directory = images_directory + '\keras_png_slices_validate'
+validation_masks_directory = images_directory + '\keras_png_slices_seg_validate'
 
 model_name='unet'
 output_directory = './output_torch_' + model_name
@@ -85,9 +88,18 @@ class BrainSlicesDataset(Dataset):
         image, mask = self.images[index]['image'], self.images[index]['mask']
         image = Image.open(image)
         mask = Image.open(mask)
+
+        # print(np.array(image).shape)
         if self.transform:
             image = self.transform(image)
             mask = self.transform(mask)
+            print(mask)
+
+            # one_hot_mask = torch.nn.functional.one_hot(mask, num_classes=num_classes)
+            # desired_shape = (one_hot_mask.shape[0], num_classes, one_hot_mask.shape[1], one_hot_mask.shape[2])
+            # one_hot_mask = one_hot_mask.permute(0, 3, 1, 2)  # Permute dimensions to match the desired shape
+            # one_hot_mask = one_hot_mask.view(*desired_shape)
+
         return image, mask
 
 # Function for generating a mask for the given image
@@ -122,13 +134,13 @@ transform = transforms.Compose([
 ])
 
 train_set = BrainSlicesDataset(train_directory, train_masks_directory, transform=transform)
-train_loader = DataLoader(train_set, batch_size=len(train_set), shuffle=True)
+train_loader = DataLoader(train_set, batch_size=batchsize, shuffle=True)
 
 test_set = BrainSlicesDataset(test_directory, test_masks_directory, transform=transform)
-test_loader = DataLoader(test_set, batch_size=len(test_set), shuffle=True)
+test_loader = DataLoader(test_set, batch_size=batchsize, shuffle=False)
 
 validate_set = BrainSlicesDataset(validation_directory, validation_masks_directory, transform=transform)
-validate_loader = DataLoader(validate_set, batch_size=len(validate_set), shuffle=True)
+validate_loader = DataLoader(validate_set, batch_size=batchsize, shuffle=False)
 
 def train_model(model, criteria, optimizer, num_epochs, validation_interval=1):
     """
@@ -141,7 +153,8 @@ def train_model(model, criteria, optimizer, num_epochs, validation_interval=1):
     @param num_epochs: the number of epochs to train for
     @param validation_interval: interval (in epochs) at which to perform validation
     """
-    device = next(model.parameters()).device
+    print("> Commence Training")
+    # device = next(model.parameters()).device
     model.train()
     start = time.time()
     
@@ -155,6 +168,9 @@ def train_model(model, criteria, optimizer, num_epochs, validation_interval=1):
             image = image.to(device)
             mask = mask.to(device)
             
+            # Flatten the mask to 2D
+            mask = mask.view(-1, mask.shape[2], mask.shape[3])
+
             # Forward pass
             output = model(image)
             loss = criteria(output, mask)

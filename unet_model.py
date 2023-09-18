@@ -2,6 +2,8 @@ from unet_model_components import *
 import torch.nn as nn
 import torch
 import torchvision.transforms as transforms
+import torch.nn.functional as F
+
 
 class UNet(nn.Module):
     """
@@ -11,7 +13,7 @@ class UNet(nn.Module):
     def __init__(self) -> None:
         super(UNet, self).__init__()
         
-        self.in_conv = UNetInConv(3, 32)
+        self.in_conv = UNetInConv(1, 32)
         
         self.down1 = UNetDown(32, 64)
         self.down2 = UNetDown(64, 128)
@@ -21,9 +23,8 @@ class UNet(nn.Module):
         self.up1 = UNetUp(512, 256)
         self.up2 = UNetUp(256, 128)
         self.up3 = UNetUp(128, 64)
-        self.up4 = UNetUp(64, 32)
         
-        self.out_conv = UNetOutConv(32, 1)
+        self.out_conv = UNetOutConv(64, 4)
         
     def forward(self, x):
         """
@@ -35,14 +36,16 @@ class UNet(nn.Module):
         x4 = self.down3(x3)
         x = self.down4(x4)
         
-        x = torch.cat([x, x4], dim=1)
+        # x = torch.cat([x, x4])
         x = self.up1(x)
-        x = torch.cat([x, x3], dim=1)
+        # x = torch.cat([x, x3])
         x = self.up2(x)
-        x = torch.cat([x, x2], dim=1)
+        # x = torch.cat([x, x2])
         x = self.up3(x)
-        x = torch.cat([x, x1], dim=1)
-        x = self.up4(x)
+        # x = torch.cat([x, x1])
         
         x = self.out_conv(x)
+        x = F.softmax(x, dim=1)
+
+        print(x.shape)
         return x
