@@ -1,5 +1,6 @@
 import time
 from PIL import Image
+from matplotlib import pyplot as plt
 import torch
 import os
 import torchvision.transforms as transforms
@@ -88,6 +89,30 @@ class BrainSlicesDataset(Dataset):
             image = self.transform(image)
             mask = self.transform(mask)
         return image, mask
+
+# Function for generating a mask for the given image
+
+def generate_and_save_images(model, epoch, test_input):
+    """
+    Generates and save images
+    @param model: the model to use for generating the images
+    @param epoch: the epoch number
+    @param test_input: the test input
+    
+    Reference: https://github.com/shakes76/pattern-analysis-2023/blob/experimental/generative/test_vae_mnist.py#L243
+    """
+    with torch.no_grad():
+        predictions = model(test_input)
+
+    fig = plt.figure(figsize=(256,256))
+
+    for i in range(predictions.shape[0]):
+        plt.subplot(256, 256, i+1)
+        plt.imshow(predictions[i, 0, :, :].cpu().detach().numpy(), cmap='gray')
+        plt.axis('off')
+
+    plt.savefig(output_directory+'/image_at_epoch_{:04d}.png'.format(epoch))
+    plt.show()
 
 
 # 1. Preprocess the data with transforms and load data with DataLoader
@@ -207,4 +232,4 @@ criteria = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 train_model(model, criteria, optimizer, num_epochs)
 test_model(model)
-        
+generate_and_save_images(model, num_epochs, test_set[0][0].unsqueeze(0).to(device))        
